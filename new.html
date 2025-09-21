@@ -1,0 +1,308 @@
+import React, { useState } from 'react';
+
+const Calculator = () => {
+  const [display, setDisplay] = useState('0');
+  const [calculation, setCalculation] = useState('');
+  const [previousValue, setPreviousValue] = useState(null);
+  const [operation, setOperation] = useState(null);
+  const [waitingForOperand, setWaitingForOperand] = useState(false);
+  const [justCalculated, setJustCalculated] = useState(false);
+
+  const inputNumber = (num) => {
+    if (justCalculated) {
+      setDisplay(String(num));
+      setCalculation(String(num));
+      setJustCalculated(false);
+      setPreviousValue(null);
+      setOperation(null);
+    } else if (waitingForOperand) {
+      setDisplay(String(num));
+      setCalculation(calculation + num);
+      setWaitingForOperand(false);
+    } else {
+      const newDisplay = display === '0' ? String(num) : display + num;
+      setDisplay(newDisplay);
+      if (calculation === '' || justCalculated) {
+        setCalculation(String(num));
+      } else {
+        // Update the last number in calculation
+        const lastOpIndex = Math.max(
+          calculation.lastIndexOf('+'),
+          calculation.lastIndexOf('-'),
+          calculation.lastIndexOf('×'),
+          calculation.lastIndexOf('÷')
+        );
+        if (lastOpIndex !== -1 && !waitingForOperand) {
+          setCalculation(calculation.substring(0, lastOpIndex + 1) + newDisplay);
+        } else if (lastOpIndex === -1) {
+          setCalculation(newDisplay);
+        }
+      }
+    }
+  };
+
+  const inputDecimal = () => {
+    if (justCalculated) {
+      setDisplay('0.');
+      setCalculation('0.');
+      setJustCalculated(false);
+      setPreviousValue(null);
+      setOperation(null);
+    } else if (waitingForOperand) {
+      setDisplay('0.');
+      setCalculation(calculation + '0.');
+      setWaitingForOperand(false);
+    } else if (display.indexOf('.') === -1) {
+      const newDisplay = display + '.';
+      setDisplay(newDisplay);
+      // Update the last number in calculation
+      const lastOpIndex = Math.max(
+        calculation.lastIndexOf('+'),
+        calculation.lastIndexOf('-'),
+        calculation.lastIndexOf('×'),
+        calculation.lastIndexOf('÷')
+      );
+      if (lastOpIndex !== -1) {
+        setCalculation(calculation.substring(0, lastOpIndex + 1) + newDisplay);
+      } else {
+        setCalculation(newDisplay);
+      }
+    }
+  };
+
+  const clear = () => {
+    setDisplay('0');
+    setCalculation('');
+    setPreviousValue(null);
+    setOperation(null);
+    setWaitingForOperand(false);
+    setJustCalculated(false);
+  };
+
+  const performOperation = (nextOperation) => {
+    const inputValue = parseFloat(display);
+
+    if (justCalculated) {
+      setCalculation(display + nextOperation);
+      setJustCalculated(false);
+    } else if (previousValue === null) {
+      setCalculation(display + nextOperation);
+    } else if (operation) {
+      const currentValue = previousValue || 0;
+      const newValue = calculate(currentValue, inputValue, operation);
+
+      setDisplay(String(newValue));
+      setCalculation(String(newValue) + nextOperation);
+      setPreviousValue(newValue);
+    } else {
+      setCalculation(calculation + nextOperation);
+    }
+
+    if (previousValue === null) {
+      setPreviousValue(inputValue);
+    } else if (operation && !justCalculated) {
+      const currentValue = previousValue || 0;
+      const newValue = calculate(currentValue, inputValue, operation);
+      setDisplay(String(newValue));
+      setPreviousValue(newValue);
+    }
+
+    setWaitingForOperand(true);
+    setOperation(nextOperation);
+  };
+
+  const calculate = (firstValue, secondValue, operation) => {
+    switch (operation) {
+      case '+':
+        return firstValue + secondValue;
+      case '-':
+        return firstValue - secondValue;
+      case '×':
+        return firstValue * secondValue;
+      case '÷':
+        return firstValue / secondValue;
+      case '=':
+        return secondValue;
+      default:
+        return secondValue;
+    }
+  };
+
+  const handleEquals = () => {
+    const inputValue = parseFloat(display);
+
+    if (previousValue !== null && operation) {
+      const newValue = calculate(previousValue, inputValue, operation);
+      setDisplay(String(newValue));
+      setCalculation(calculation + '=' + String(newValue));
+      setPreviousValue(null);
+      setOperation(null);
+      setWaitingForOperand(true);
+      setJustCalculated(true);
+    }
+  };
+
+  const handlePercentage = () => {
+    const value = parseFloat(display) / 100;
+    setDisplay(String(value));
+  };
+
+  const handlePlusMinus = () => {
+    if (display !== '0') {
+      setDisplay(display.startsWith('-') ? display.slice(1) : '-' + display);
+    }
+  };
+
+  const Button = ({ onClick, className = '', children, ...props }) => (
+    <button
+      onClick={onClick}
+      className={`h-16 rounded-full text-xl font-medium transition-all duration-200 active:scale-95 ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div className="max-w-sm mx-auto bg-black rounded-3xl p-6 shadow-2xl">
+      {/* Display */}
+      <div className="bg-black mb-6 p-4 rounded-2xl">
+        <div className="text-right text-gray-400 text-lg font-light mb-1 h-6 overflow-hidden">
+          {calculation && !justCalculated ? calculation : ''}
+        </div>
+        <div className="text-right text-white text-4xl font-light overflow-hidden">
+          {display.length > 8 ? parseFloat(display).toExponential(2) : display}
+        </div>
+      </div>
+
+      {/* Button Grid */}
+      <div className="grid grid-cols-4 gap-3">
+        {/* Row 1 */}
+        <Button
+          onClick={clear}
+          className="bg-gray-600 text-white hover:bg-gray-500 col-span-2"
+        >
+          AC
+        </Button>
+        <Button
+          onClick={handlePercentage}
+          className="bg-gray-600 text-white hover:bg-gray-500"
+        >
+          %
+        </Button>
+        <Button
+          onClick={() => performOperation('÷')}
+          className="bg-orange-500 text-white hover:bg-orange-400"
+        >
+          ÷
+        </Button>
+
+        {/* Row 2 */}
+        <Button
+          onClick={() => inputNumber(7)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          7
+        </Button>
+        <Button
+          onClick={() => inputNumber(8)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          8
+        </Button>
+        <Button
+          onClick={() => inputNumber(9)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          9
+        </Button>
+        <Button
+          onClick={() => performOperation('×')}
+          className="bg-orange-500 text-white hover:bg-orange-400"
+        >
+          ×
+        </Button>
+
+        {/* Row 3 */}
+        <Button
+          onClick={() => inputNumber(4)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          4
+        </Button>
+        <Button
+          onClick={() => inputNumber(5)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          5
+        </Button>
+        <Button
+          onClick={() => inputNumber(6)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          6
+        </Button>
+        <Button
+          onClick={() => performOperation('-')}
+          className="bg-orange-500 text-white hover:bg-orange-400"
+        >
+          -
+        </Button>
+
+        {/* Row 4 */}
+        <Button
+          onClick={() => inputNumber(1)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          1
+        </Button>
+        <Button
+          onClick={() => inputNumber(2)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          2
+        </Button>
+        <Button
+          onClick={() => inputNumber(3)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          3
+        </Button>
+        <Button
+          onClick={() => performOperation('+')}
+          className="bg-orange-500 text-white hover:bg-orange-400"
+        >
+          +
+        </Button>
+
+        {/* Row 5 */}
+        <Button
+          onClick={handlePlusMinus}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          ±
+        </Button>
+        <Button
+          onClick={() => inputNumber(0)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          0
+        </Button>
+        <Button
+          onClick={inputDecimal}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+        >
+          .
+        </Button>
+        <Button
+          onClick={handleEquals}
+          className="bg-orange-500 text-white hover:bg-orange-400"
+        >
+          =
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default Calculator;
